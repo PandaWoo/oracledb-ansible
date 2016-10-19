@@ -1,7 +1,8 @@
 ---
 - name: Configure Oracle Linux 7 with Oracle Database 12c
   hosts: oradb
-  sudo: True
+  become: True
+
   vars_files:
     # User defined variables for infrastructure
     - infra-vars.yml
@@ -9,9 +10,9 @@
     # User Passwords
     - secrets.yml
   roles:
-    - role: linux-oracle
-    - role: oracle-install
-      sudo_user: '{{ oracle_user }}'
+  - { role: linux-oracle, tags: ["install-oracle"] }
+  - { role: oracle-install, become_user: '{{ oracle_user }}', tags: ["install-oracle"] }
+  - { role: oracle-db-creation, become_user: '{{ oracle_user }}', tags: ["db-creation"] }
 
   pre_tasks:
     # ==> Fix hosts file. Remove hostname from local loop. A workaround for vagrant

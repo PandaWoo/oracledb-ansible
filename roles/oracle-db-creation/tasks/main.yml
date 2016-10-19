@@ -1,0 +1,42 @@
+---
+- name: Copy listener response file
+  template: src=netca.rsp.j2 dest={{ installation_folder }}/netca.rsp
+
+- name: Create listener using netca
+  command: '{{ oracle_home }}/bin/netca -silent -responseFile {{ installation_folder }}/netca.rsp'
+
+- name: Copy response file for dbca
+  template: src=dbca.rsp.j2 dest={{ installation_folder }}/dbca.rsp
+
+- name: Create database
+  command: '{{ oracle_home }}/bin/dbca -silent -responseFile {{ installation_folder }}/dbca.rsp'
+
+- name: Create oracle home variable
+  lineinfile: dest='/home/{{ oracle_user }}/.bashrc' line='export ORACLE_HOME={{ oracle_home }}'
+
+- name: Create oracle sid variable
+  lineinfile: dest='/home/{{ oracle_user }}/.bashrc' line='export ORACLE_SID={{ oracle_sid }}'
+
+- name: Add oracle home bin folder
+  lineinfile: dest='/home/{{ oracle_user }}/.bashrc' line='export PATH=$PATH:$ORACLE_HOME/bin'
+
+- name: Change oratab
+  lineinfile: dest='/etc/oratab' regexp='^{{ oracle_sid }}:{{ oracle_home }}:N' line='{{ oracle_sid }}:{{ oracle_home }}:Y'
+  become_user: root
+
+- name: Copy init.d oracle script to /etc/init.d
+  template: src=oradb.j2 dest=/etc/init.d/oradb mode=0750
+  become_user: root
+
+- name: Enable oradb script to run at startup
+  command: 'chkconfig --add oradb'
+  become_user: root
+
+- name: Create trigger for autostart pluggable db's
+  copy: src=start-pluggable-dbs.sh dest={{ installation_folder }}/ mode=0755
+  tags:
+    - start-pluggable
+
+- shell: '{{ installation_folder }}/start-pluggable-dbs.sh'
+  tags:
+    - start-pluggable
